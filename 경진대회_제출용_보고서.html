@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>트루부산(TrueBusan) MVP 구현 결과 보고서</title>
+<style>
+  body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+  h1 { text-align: center; color: #0056B3; border-bottom: 2px solid #0056B3; padding-bottom: 10px; margin-bottom: 40px; }
+  h2 { color: #0056B3; margin-top: 40px; border-left: 5px solid #0056B3; padding-left: 15px; font-size: 1.4em; }
+  h3 { color: #444; margin-top: 20px; font-size: 1.1em; }
+  .box { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 20px; margin: 20px 0; border-radius: 8px; }
+  ul { line-height: 1.8; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+  th { background-color: #f8f9fa; font-weight: bold; text-align: center; color: #495057; }
+  .img-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 300px; background-color: #f1f3f5; color: #868e96; font-weight: bold; border: 2px dashed #ced4da; margin: 20px 0; border-radius: 8px; font-size: 0.9em; }
+  a { color: #0056B3; text-decoration: underline; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>트루부산(TrueBusan) MVP 개발 완료 보고서</h1>
+
+<h2>1. 서비스 개요 및 MVP 배포 주소</h2>
+<div class="box">
+  <p><strong>서비스명:</strong> 트루부산 (TrueBusan) - AI 및 공공데이터 기반 부산 안심 관광/미식 큐레이션</p>
+  <p><strong>사용자용 웹 서비스 (MVP):</strong> <a href="https://truebusan-frontend.vercel.app" target="_blank">https://truebusan-frontend.vercel.app</a></p>
+  <p><strong>관리자용 대시보드:</strong> <a href="https://truebusan-frontend.vercel.app/admin" target="_blank">https://truebusan-frontend.vercel.app/admin</a> (ID: admin / PW: 1234)</p>
+  <p><strong>개발 환경:</strong> Next.js (Frontend), FastAPI (Backend), Vercel (Cloud Hosting)</p>
+</div>
+
+<h2>2. 주요 기능 및 UI 스냅샷</h2>
+<h3>2.1 사용자 맵 대시보드 및 안심 큐레이션 UI</h3>
+<p>카카오 지도 API를 활용하여 부산 주요 지역(해운대, 광안리 등)의 실제 핫플레이스를 렌더링하고, 장소 클릭 시 직관적인 사진과 안심 데이터가 담긴 바텀시트를 제공합니다.</p>
+<div class="img-placeholder">
+  <span>[ 📷 스크린샷 삽입 구역 ]</span>
+  <span>truebusan-frontend.vercel.app 접속 후 메인 지도 화면 캡처</span>
+</div>
+
+<h3>2.2 AI 기반 드래그 앤 드롭(DnD) 동선 추천 시스템</h3>
+<p>사용자가 선택한 장소들을 기반으로 최적의 여행 코스를 생성하며, 드래그 앤 드롭 인터페이스를 통해 직관적으로 동선 순서를 변경할 수 있습니다.</p>
+<div class="img-placeholder">
+  <span>[ 📷 스크린샷 삽입 구역 ]</span>
+  <span>우측(또는 하단)에 열리는 '동선 추천(코스 생성)' UI 캡처</span>
+</div>
+
+<h2>3. 지능형 데이터 파이프라인 (Data Pipeline)</h2>
+<div class="box">
+  <p>단순 데이터 수집을 넘어, 서버 부하와 AI API(LLM) 호출 비용을 획기적으로 절감하는 <strong>'30/40/30 AI 분석 전략 알고리즘'</strong>을 자체 설계하여 파이프라인에 적용했습니다.</p>
+  <ul>
+    <li><strong>상위 30% (High Confidence):</strong> 긍정 리뷰 압도적 다수. 정밀 AI 분석을 거쳐 <strong>자동 PASS(안심) 처리.</strong></li>
+    <li><strong>하위 30% (Low Confidence):</strong> 부정 리뷰(바가지, 불친절 등) 다수 발생. 정밀 AI 분석 후 <strong>자동 FAIL(경고 및 리스트 제외) 처리.</strong></li>
+    <li><strong>중간 40% (Neutral):</strong> AI API 토큰 소모를 방지하기 위해 분석을 스킵하고 기본 장소 정보만 구성하여 <strong>운영 리소스 극대화.</strong></li>
+  </ul>
+</div>
+<div class="img-placeholder">
+  <span>[ 📷 스크린샷 삽입 구역 ]</span>
+  <span>파이썬 크롤러(crawler.py) 실행 로그 화면 캡처</span>
+</div>
+
+<h2>4. 관리자 백오피스 및 공공데이터 융합 (Data Management)</h2>
+<p>수집된 데이터의 객관성과 신뢰도를 보장하기 위해 지자체 공공데이터를 융합한 백오피스(관리자 대시보드)를 구축했습니다. 관리자는 직관적인 UI를 통해 안심 마크를 직접 제어하고 검증 내역을 관리할 수 있습니다.</p>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 25%">검증 기준 (공공데이터)</th>
+      <th style="width: 55%">데이터 적용 설명</th>
+      <th style="width: 20%">AI Trust Score 반영</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>지자체 안심식당</strong></td>
+      <td>부산시/구청에서 인증한 위생 준수 식당 데이터를 크롤링 데이터와 교차 검증</td>
+      <td style="text-align: center; font-weight: bold; color: #0056B3;">+ 가중치 부여</td>
+    </tr>
+    <tr>
+      <td><strong>착한가격업소</strong></td>
+      <td>행정안전부 지정, 바가지 요금 없는 정찰제 식당 목록 검증</td>
+      <td style="text-align: center; font-weight: bold; color: #0056B3;">+ 강력한 가중치</td>
+    </tr>
+    <tr>
+      <td><strong>식약처 위생등급</strong></td>
+      <td>'매우 우수', '우수' 등급 취득 여부 시스템 자동 연동</td>
+      <td style="text-align: center; font-weight: bold; color: #0056B3;">+ 가중치 부여</td>
+    </tr>
+  </tbody>
+</table>
+<div class="img-placeholder">
+  <span>[ 📷 스크린샷 삽입 구역 ]</span>
+  <span>/admin 접속 후 '리뷰 & 안심 검증' 탭의 데이터 테이블 캡처</span>
+</div>
+
+<h2>5. 기대 효과 및 향후 발전 방향</h2>
+<p>본 MVP는 단순한 장소 나열식 관광 앱을 넘어, '바가지요금'과 '불친절'을 기술적으로 필터링하는 <strong>'신뢰 기반의 관광 생태계'</strong>를 제안합니다. 향후 실시간 리뷰 크롤링을 클라우드 스케줄러(Cron)로 100% 자동화하고, 외국인 관광객을 위한 다국어(영어, 중국어, 일본어) AI 자동 번역 지원을 통해 부산의 글로벌 스마트 관광 경쟁력 강화에 기여할 것입니다.</p>
+
+</body>
+</html>
