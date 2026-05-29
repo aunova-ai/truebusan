@@ -49,3 +49,20 @@ def delete_place(place_id: int, db: Session = Depends(get_db)):
     db_place.status = models.PlaceStatus.TRASHED
     db.commit()
     return {"message": "Place moved to trash (Soft Deleted)"}
+
+class PlaceUpdate(schemas.PlaceBase):
+    pass
+
+@app.put("/api/admin/places/{place_id}", response_model=schemas.PlaceResponse)
+def update_place_safety(place_id: int, place_update: PlaceUpdate, db: Session = Depends(get_db)):
+    db_place = db.query(models.Place).filter(models.Place.id == place_id).first()
+    if not db_place:
+        raise HTTPException(status_code=404, detail="Place not found")
+    
+    db_place.is_safe = place_update.is_safe
+    db_place.trust_score = place_update.trust_score
+    db_place.status = place_update.status
+    db.commit()
+    db.refresh(db_place)
+    return db_place
+

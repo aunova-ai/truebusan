@@ -2,7 +2,7 @@
 
 import { Map, MapMarker, Polyline, useKakaoLoader } from "react-kakao-maps-sdk";
 import { useState, useEffect } from "react";
-import { Search, Trash2, GripVertical, MapPin, X, Plus } from "lucide-react";
+import { Search, Trash2, GripVertical, MapPin, X, Plus, Clock, Car, Camera, Banknote, ChevronDown } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -24,7 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { mockPlaces } from "../data/mockPlaces";
 
 const allPlaces = mockPlaces;
-type Place = typeof allPlaces[0];
+type Place = typeof allPlaces[0] & { menus?: any[] };
 
 // SVG 마커 데이터 URL 생성 함수
 const getMarkerIcon = (type: string, isSafe: boolean) => {
@@ -104,8 +104,40 @@ export default function KakaoMap() {
         const response = await fetch("http://localhost:8000/api/places");
         if (response.ok) {
           const data = await response.json();
-          setPlaces(data);
-          console.log("✅ 백엔드 데이터 연동 성공:", data);
+          const placesWithImage = data.map((place: any) => {
+            let menus = [];
+            if (place.type === "식당") {
+              menus = [
+                { name: "시그니처 대표 메뉴", price: 15000, img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&q=80" },
+                { name: "인기 사이드 메뉴", price: 8000, img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100&q=80" }
+              ];
+            } else if (place.type === "숙소") {
+              menus = [
+                { name: "스탠다드 더블룸 (1박)", price: 120000, img: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=100&q=80" },
+                { name: "오션뷰 디럭스룸 (1박)", price: 180000, img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=100&q=80" }
+              ];
+            } else {
+              menus = [
+                { name: "성인 기본 입장권", price: 12000, img: "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=100&q=80" },
+                { name: "소인/우대 입장권", price: 9000, img: "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=100&q=80" }
+              ];
+            }
+
+            return {
+              ...place,
+              isSafe: place.is_safe,
+              trustScore: place.trust_score,
+              image: place.type === "숙소" 
+                ? "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80" 
+                : place.type === "식당" 
+                  ? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80" 
+                  : "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80",
+              phone: `051-${Math.floor(Math.random() * 800 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`,
+              menus
+            };
+          });
+          setPlaces(placesWithImage);
+          console.log("✅ 백엔드 데이터 연동 성공:", placesWithImage);
         }
       } catch (err) {
         console.warn("⚠️ 백엔드 서버가 꺼져있어 임시 데이터를 사용합니다.", err);
@@ -118,9 +150,13 @@ export default function KakaoMap() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // 여행 코스 상태 (기본적으로 첫 코스는 비어있음)
+  // 여행 코스 상태
   const [itinerary, setItinerary] = useState<Place[]>([]);
   const [isCourseMode, setIsCourseMode] = useState(false);
+  
+  // AI 스케줄 상태
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleData, setScheduleData] = useState<any[]>([]);
 
   // dnd-kit 센서 설정
   const sensors = useSensors(
@@ -163,10 +199,55 @@ export default function KakaoMap() {
     setSelectedPlace(null); // 추가 후 바텀시트 닫기
   };
 
+  const handleStartGuidance = () => {
+    if (itinerary.length === 0) return;
+    
+    const generated = itinerary.map((place, index) => {
+      const startTime = new Date();
+      startTime.setHours(10 + index * 2, 0, 0); // 10:00 AM, 12:00 PM...
+      const timeStr = startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      
+      let transport = "도보 이동 (약 10분)";
+      let cost = 0;
+      if (index > 0) {
+        transport = "카카오T 택시 (약 15분)";
+        cost = 6000 + Math.floor(Math.random() * 5) * 1000;
+      }
+
+      let tip = "인증샷 스팟: 입구에서 예쁘게 한 컷!";
+      if (place.type === "식당") tip = "추천 메뉴: 영수증 리뷰가 가장 많은 시그니처 메뉴";
+      if (place.type === "숙소") tip = "꿀팁: 체크인 전 프론트에 짐 보관 가능 여부 확인하기";
+
+      return {
+        id: place.id,
+        time: timeStr,
+        place: place.name,
+        type: place.type,
+        transport,
+        cost,
+        tip,
+        icon: place.icon
+      };
+    });
+    
+    setScheduleData(generated);
+    setShowSchedule(true);
+    setIsCourseMode(false); // 사이드 패널 닫기
+  };
+
   if (loading) return <div className="flex h-screen items-center justify-center bg-gray-100">지도를 불러오는 중...</div>;
   if (error) return <div className="flex h-screen items-center justify-center bg-red-100">API 오류 발생</div>;
 
   const polylinePath = itinerary.map((p) => ({ lat: p.lat, lng: p.lng }));
+
+  const handleReset = () => {
+    setItinerary([]);
+    setIsCourseMode(false);
+    setShowSchedule(false);
+    setScheduleData([]);
+    setSelectedPlace(null);
+    setSearchQuery("");
+  };
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-100">
@@ -174,7 +255,9 @@ export default function KakaoMap() {
       {/* 통합 검색창 및 상단 헤더 */}
       <div className="absolute top-0 left-0 w-full p-4 z-10 pointer-events-none">
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg p-3 px-5 flex flex-col md:flex-row gap-4 items-center pointer-events-auto border border-gray-100">
-          <h1 className="text-2xl font-black tracking-tight text-[#0056B3]">TrueBusan</h1>
+          <h1 onClick={handleReset} className="text-2xl font-black tracking-tight text-[#0056B3] cursor-pointer hover:opacity-80 transition">
+            TrueBusan
+          </h1>
           
           <div className="flex-1 w-full relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -229,16 +312,16 @@ export default function KakaoMap() {
         )}
       </Map>
 
-      {/* 우측 사이드 패널 (코스 모드) */}
+      {/* 우측 사이드 패널 (코스 모드) - 모바일에서는 하단 50% 바텀 시트로 동작 */}
       <div 
-        className={`absolute top-0 right-0 h-full w-full md:w-[380px] bg-gray-50 shadow-[-10px_0_40px_rgba(0,0,0,0.1)] transition-transform duration-500 ease-in-out z-20 flex flex-col ${
-          isCourseMode ? "translate-x-0" : "translate-x-full"
+        className={`absolute bottom-0 md:top-0 right-0 w-full md:w-[380px] h-[55vh] md:h-full bg-gray-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-[-10px_0_40px_rgba(0,0,0,0.1)] rounded-t-3xl md:rounded-none transition-transform duration-500 ease-in-out z-20 flex flex-col ${
+          isCourseMode ? "translate-y-0 md:translate-y-0 md:translate-x-0" : "translate-y-full md:translate-y-0 md:translate-x-full"
         }`}
       >
-        <div className="p-6 bg-white border-b border-gray-100 pt-24">
+        <div className="p-4 md:p-6 bg-white border-b border-gray-100 pt-4 md:pt-24 rounded-t-3xl md:rounded-none">
           <div className="flex justify-between items-center mb-2">
             <div className="inline-block px-3 py-1 bg-blue-50 text-[#0056B3] rounded-full text-xs font-bold">✨ AI 맞춤 추천</div>
-            <button onClick={() => { setIsCourseMode(false); setItinerary([]); }} className="text-gray-400 hover:text-gray-600">
+            <button onClick={handleReset} className="text-gray-400 hover:text-gray-600">
               <X size={24} />
             </button>
           </div>
@@ -266,7 +349,7 @@ export default function KakaoMap() {
         </div>
         
         <div className="p-6 border-t border-gray-200 bg-white">
-          <button className="w-full py-4 bg-[#0056B3] text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition">
+          <button onClick={handleStartGuidance} className="w-full py-4 bg-[#0056B3] text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition">
             이 동선으로 길안내 시작
           </button>
         </div>
@@ -295,11 +378,31 @@ export default function KakaoMap() {
 
               <h2 className="text-2xl font-bold text-gray-800 mb-1">{selectedPlace.icon} {selectedPlace.name}</h2>
               
-              <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+              <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
                 <span className="font-semibold text-gray-700">{selectedPlace.type}</span>
                 <span>·</span>
                 <span>📞 {selectedPlace.phone}</span>
               </div>
+
+              {/* 메뉴 및 가격 정보 */}
+              {selectedPlace.menus && selectedPlace.menus.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-gray-800 mb-2">
+                    {selectedPlace.type === '숙소' ? '객실 정보' : selectedPlace.type === '관광지' ? '이용 요금' : '대표 메뉴'}
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedPlace.menus.map((menu: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <img src={menu.img} alt={menu.name} className="w-10 h-10 rounded-md object-cover shadow-sm" />
+                          <span className="text-sm font-medium text-gray-700">{menu.name}</span>
+                        </div>
+                        <span className="text-sm font-bold text-[#0056B3]">₩{menu.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             {/* 코스 모드 동작 분기 */}
             {!isCourseMode ? (
@@ -338,6 +441,80 @@ export default function KakaoMap() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* AI 스케줄 바텀 시트 */}
+      <div 
+        className={`absolute bottom-0 left-0 w-full bg-white rounded-t-[2rem] shadow-[0_-20px_60px_rgba(0,0,0,0.2)] transition-transform duration-500 ease-in-out z-40 flex flex-col ${
+          showSchedule ? "translate-y-0 h-[85vh] md:h-[70vh]" : "translate-y-full h-[85vh]"
+        }`}
+      >
+        <div className="w-full flex justify-center py-3 cursor-pointer" onClick={() => setShowSchedule(false)}>
+          <div className="w-16 h-1.5 bg-gray-200 rounded-full"></div>
+        </div>
+        
+        <div className="px-6 pb-4 border-b border-gray-100 flex justify-between items-center">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-[#0056B3] rounded-full text-xs font-black mb-2 border border-blue-100">
+              ✨ AI Travel Planner
+            </div>
+            <h2 className="text-2xl font-black text-gray-800">나만의 맞춤형 일정표</h2>
+          </div>
+          <button onClick={() => setShowSchedule(false)} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition">
+            <ChevronDown size={24} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+          <div className="max-w-2xl mx-auto relative">
+            {/* 타임라인 연결선 */}
+            <div className="absolute left-[27px] top-4 bottom-10 w-0.5 bg-gradient-to-b from-blue-200 to-green-200 z-0"></div>
+
+            <div className="space-y-8 relative z-10">
+              {scheduleData.map((step, index) => (
+                <div key={step.id} className="flex gap-4">
+                  {/* 타임라인 노드 */}
+                  <div className="w-14 h-14 rounded-full bg-white border-4 border-blue-100 shadow-sm flex items-center justify-center flex-shrink-0 z-10 text-2xl">
+                    {step.icon}
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-bold text-[#0056B3] bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock size={12}/> {step.time}</span>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-800 mb-3">{step.place}</h3>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3 bg-gray-50 p-3 rounded-xl">
+                          <Car size={18} className="text-gray-500 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-gray-700">{step.transport}</p>
+                            {step.cost > 0 && <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><Banknote size={12}/> 예상 결제: ₩{step.cost.toLocaleString()}</p>}
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-50">
+                          <Camera size={18} className="text-[#0056B3] mt-0.5" />
+                          <p className="text-sm font-bold text-[#0056B3]">{step.tip}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 mb-6 bg-gray-800 text-white rounded-2xl p-6 text-center shadow-lg">
+              <h3 className="font-bold text-lg mb-2">총 예상 경비: ₩{scheduleData.reduce((acc, curr) => acc + curr.cost, 0).toLocaleString()}</h3>
+              <p className="text-sm text-gray-400 mb-4">트루부산 안심 검증 데이터를 기반으로 산출된 내역입니다.</p>
+              <button className="bg-white text-gray-800 font-black py-3 px-8 rounded-xl w-full hover:bg-gray-100 transition">
+                이 일정 그대로 결제 및 출발
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

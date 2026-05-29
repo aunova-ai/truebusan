@@ -23,7 +23,18 @@ export default function AdminPage() {
         const response = await fetch("http://localhost:8000/api/places");
         if (response.ok) {
           const data = await response.json();
-          setPlaces(data);
+          const placesWithImage = data.map((place: any) => ({
+            ...place,
+            isSafe: place.is_safe,
+            trustScore: place.trust_score,
+            image: place.type === "숙소" 
+              ? "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80" 
+              : place.type === "식당" 
+                ? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80" 
+                : "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80",
+            phone: `051-${Math.floor(Math.random() * 800 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`
+          }));
+          setPlaces(placesWithImage);
         }
       } catch (err) {
         console.warn("⚠️ 백엔드 미연결: 임시 데이터를 사용합니다.", err);
@@ -42,15 +53,48 @@ export default function AdminPage() {
     }
   };
 
-  const toggleSafeStatus = (id: number) => {
+  const toggleSafeStatus = async (id: number) => {
+    const targetPlace = places.find(p => p.id === id);
+    if (!targetPlace) return;
+
+    const updatedIsSafe = !targetPlace.isSafe;
+
+    // 낙관적 업데이트 (UI 즉시 반영)
     setPlaces(places.map(place => 
-      place.id === id ? { ...place, isSafe: !place.isSafe } : place
+      place.id === id ? { ...place, isSafe: updatedIsSafe } : place
     ));
+
+    try {
+      await fetch(`http://localhost:8000/api/admin/places/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: targetPlace.name,
+          type: targetPlace.type,
+          lat: targetPlace.lat,
+          lng: targetPlace.lng,
+          trust_score: targetPlace.trustScore,
+          is_safe: updatedIsSafe,
+          status: updatedIsSafe ? "SAFE" : "DANGER",
+          icon: targetPlace.icon
+        }),
+      });
+    } catch (err) {
+      console.warn("백엔드 업데이트 실패", err);
+      // 실패 시 원래 상태로 롤백 (선택사항)
+    }
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("정말로 이 데이터를 삭제하시겠습니까?")) {
+  const handleDelete = async (id: number) => {
+    if (confirm("정말로 이 데이터를 삭제하시겠습니까? (휴지통으로 이동)")) {
       setPlaces(places.filter(place => place.id !== id));
+      try {
+        await fetch(`http://localhost:8000/api/admin/places/${id}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        console.warn("백엔드 삭제 실패", err);
+      }
     }
   };
 
