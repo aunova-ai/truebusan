@@ -23,8 +23,28 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { mockPlaces } from "../data/mockPlaces";
 
-const allPlaces = mockPlaces;
-type Place = typeof allPlaces[0] & { menus?: any[] };
+const allPlacesWithMenus = mockPlaces.map(place => {
+  let menus = [];
+  if (place.type === "식당") {
+    menus = [
+      { name: "시그니처 대표 메뉴", price: 15000, img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&q=80" },
+      { name: "인기 사이드 메뉴", price: 8000, img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100&q=80" }
+    ];
+  } else if (place.type === "숙소") {
+    menus = [
+      { name: "스탠다드 더블룸 (1박)", price: 120000, img: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=100&q=80" },
+      { name: "오션뷰 디럭스룸 (1박)", price: 180000, img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=100&q=80" }
+    ];
+  } else {
+    menus = [
+      { name: "성인 기본 입장권", price: 12000, img: "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=100&q=80" },
+      { name: "소인/우대 입장권", price: 9000, img: "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=100&q=80" }
+    ];
+  }
+  return { ...place, menus };
+});
+const allPlaces = allPlacesWithMenus;
+type Place = typeof allPlaces[0];
 
 // SVG 마커 데이터 URL 생성 함수
 const getMarkerIcon = (type: string, isSafe: boolean) => {
